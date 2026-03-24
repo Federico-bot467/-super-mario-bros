@@ -51,7 +51,7 @@ function draw() {
     ctx.fillStyle = '#5C94FC';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Nuvole (parallax)
+    // Nuvole
     ctx.fillStyle = 'white';
     ctx.globalAlpha = 0.8;
     ctx.beginPath(); ctx.ellipse(150 - cameraX*0.3, 60, 40, 25, 0, 0, 2*Math.PI); ctx.fill();
@@ -99,26 +99,16 @@ function draw() {
         }
     }
     
-    // Mario (disegno semplice)
+    // Mario
     let px = player.x - cameraX;
-    // cappello
-    ctx.fillStyle = '#E4000F';
-    ctx.fillRect(px, player.y, 40, 12);
-    // faccia
-    ctx.fillStyle = '#FDD5A3';
-    ctx.fillRect(px + 8, player.y + 8, 24, 18);
-    // occhi
-    ctx.fillStyle = '#000';
+    ctx.fillStyle = '#E4000F'; ctx.fillRect(px, player.y, 40, 12);
+    ctx.fillStyle = '#FDD5A3'; ctx.fillRect(px + 8, player.y + 8, 24, 18);
+    ctx.fillStyle = '#000'; 
     ctx.fillRect(px + 13, player.y + 13, 5, 5);
     ctx.fillRect(px + 24, player.y + 13, 5, 5);
-    // camicia
-    ctx.fillStyle = '#E4000F';
-    ctx.fillRect(px + 5, player.y + 22, 30, 15);
-    // tuta
-    ctx.fillStyle = '#0000FF';
-    ctx.fillRect(px + 5, player.y + 32, 30, 12);
-    // scarpe
-    ctx.fillStyle = '#8B4513';
+    ctx.fillStyle = '#E4000F'; ctx.fillRect(px + 5, player.y + 22, 30, 15);
+    ctx.fillStyle = '#0000FF'; ctx.fillRect(px + 5, player.y + 32, 30, 12);
+    ctx.fillStyle = '#8B4513'; 
     ctx.fillRect(px + 5, player.y + 38, 12, 6);
     ctx.fillRect(px + 25, player.y + 38, 12, 6);
     
@@ -143,14 +133,13 @@ function draw() {
 function update() {
     if (gameOver || won) return;
     
-    // Controlli
     player.velX = 0;
     if (moveLeft || keys['ArrowLeft'] || keys['a'] || keys['A']) player.velX = -player.speed;
     if (moveRight || keys['ArrowRight'] || keys['d'] || keys['D']) player.velX = player.speed;
     
     player.velY += GRAVITY;
     
-    // Movimento X + collisione
+    // Movimento X + collisione piattaforme
     player.x += player.velX;
     for (let p of platforms) {
         if (collides(player, p)) {
@@ -158,6 +147,16 @@ function update() {
             if (player.velX < 0) player.x = p.x + p.width;
             player.velX = 0;
         }
+    }
+    
+    // === CONFINI DEL MONDO (fix sparizione) ===
+    if (player.x < 0) {
+        player.x = 0;
+        player.velX = 0;
+    }
+    if (player.x + player.width > WORLD_WIDTH) {
+        player.x = WORLD_WIDTH - player.width;
+        player.velX = 0;
     }
     
     // Movimento Y + collisione
@@ -175,6 +174,9 @@ function update() {
             }
         }
     }
+    
+    // Morte se cadi dal basso
+    if (player.y > 450) gameOver = true;
     
     // Telecamera
     cameraX = Math.max(0, Math.min(player.x - canvas.width / 3, WORLD_WIDTH - canvas.width));
@@ -203,7 +205,6 @@ function update() {
         }
     }
     
-    // Vittoria
     if (player.x > goalX) won = true;
 }
 
@@ -213,17 +214,7 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-// Tastiera (per prova)
-window.addEventListener('keydown', e => {
-    keys[e.key] = true;
-    if ((e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w') && player.grounded) {
-        player.velY = player.jumpPower;
-        player.grounded = false;
-    }
-});
-window.addEventListener('keyup', e => keys[e.key] = false);
-
-// Controlli touch (perfetti per iPhone)
+// === CONTROLLI TOUCH (perfetti per iPhone) ===
 const leftBtn = document.getElementById('left-btn');
 const rightBtn = document.getElementById('right-btn');
 const jumpBtn = document.getElementById('jump-btn');
@@ -232,6 +223,7 @@ leftBtn.addEventListener('touchstart', e => { e.preventDefault(); moveLeft = tru
 leftBtn.addEventListener('touchend', () => moveLeft = false);
 rightBtn.addEventListener('touchstart', e => { e.preventDefault(); moveRight = true; });
 rightBtn.addEventListener('touchend', () => moveRight = false);
+
 jumpBtn.addEventListener('touchstart', e => { 
     e.preventDefault(); 
     if (player.grounded) {
@@ -240,16 +232,14 @@ jumpBtn.addEventListener('touchstart', e => {
     }
 });
 
-// Supporto mouse (utile se provi su PC)
-leftBtn.addEventListener('mousedown', () => moveLeft = true);
-leftBtn.addEventListener('mouseup', () => moveLeft = false);
-rightBtn.addEventListener('mousedown', () => moveRight = true);
-rightBtn.addEventListener('mouseup', () => moveRight = false);
-jumpBtn.addEventListener('mousedown', () => {
-    if (player.grounded) {
+// Supporto tastiera (per prova su PC)
+window.addEventListener('keydown', e => {
+    keys[e.key] = true;
+    if ((e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') && player.grounded) {
         player.velY = player.jumpPower;
         player.grounded = false;
     }
 });
+window.addEventListener('keyup', e => keys[e.key] = false);
 
 gameLoop();
