@@ -45,9 +45,7 @@ let won = false;
 const goalX = 1900;
 
 function collides(a, b) {
-    // FIX IMPORTANTE: usa <= invece di < per IGNORARE il "tocco esatto" sulla cima delle piattaforme
-    // Questo elimina lo snap/teletrasporto all'inizio quando cammini sul terreno!
-    return !(a.x + a.width <= b.x || a.x >= b.x + b.width || a.y + a.height <= b.y || a.y >= b.y + b.height);
+    return !(a.x + a.width < b.x || a.x > b.x + b.width || a.y + a.height < b.y || a.y > b.y + b.height);
 }
 
 function resetGame() {
@@ -59,11 +57,9 @@ function resetGame() {
     score = 0;
     gameOver = false;
     won = false;
-    
     coins.forEach(c => c.collected = false);
     enemies[0].x = 500; enemies[0].alive = true;
     enemies[1].x = 1200; enemies[1].alive = true;
-    
     moveLeft = false;
     moveRight = false;
 }
@@ -71,11 +67,9 @@ function resetGame() {
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Cielo
     ctx.fillStyle = '#5C94FC';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Nuvole
     ctx.fillStyle = 'white';
     ctx.globalAlpha = 0.8;
     ctx.beginPath(); ctx.ellipse(150 - cameraX*0.3, 60, 40, 25, 0, 0, 2*Math.PI); ctx.fill();
@@ -85,7 +79,6 @@ function draw() {
     ctx.beginPath(); ctx.ellipse(650 - cameraX*0.3, 100, 30, 25, 0, 0, 2*Math.PI); ctx.fill();
     ctx.globalAlpha = 1;
     
-    // Piattaforme
     ctx.fillStyle = '#8B4513';
     for (let p of platforms) {
         let sx = p.x - cameraX;
@@ -97,7 +90,6 @@ function draw() {
         }
     }
     
-    // Monete
     ctx.fillStyle = '#FFCC00';
     for (let c of coins) {
         if (!c.collected) {
@@ -108,7 +100,6 @@ function draw() {
         }
     }
     
-    // Nemici
     for (let e of enemies) {
         if (e.alive) {
             let sx = e.x - cameraX;
@@ -123,7 +114,6 @@ function draw() {
         }
     }
     
-    // Mario
     let px = player.x - cameraX;
     ctx.fillStyle = '#E4000F'; ctx.fillRect(px, player.y, 40, 12);
     ctx.fillStyle = '#FDD5A3'; ctx.fillRect(px + 8, player.y + 8, 24, 18);
@@ -136,7 +126,6 @@ function draw() {
     ctx.fillRect(px + 5, player.y + 38, 12, 6);
     ctx.fillRect(px + 25, player.y + 38, 12, 6);
     
-    // Testo
     ctx.fillStyle = 'white';
     ctx.font = '20px Arial';
     ctx.fillText(`Punti: ${score}`, 20, 40);
@@ -146,7 +135,6 @@ function draw() {
         ctx.fillStyle = gameOver ? 'red' : '#FFD700';
         ctx.font = '40px Arial';
         ctx.fillText(gameOver ? 'GAME OVER' : 'HAI VINTO!', 155, 180);
-        
         ctx.fillStyle = 'white';
         ctx.font = '24px Arial';
         ctx.fillText('TOCCA LO SCHERMO PER RICOMINCIARE', 80, 240);
@@ -156,7 +144,6 @@ function draw() {
 function update() {
     if (gameOver || won) return;
     
-    // Movimento fluido con accelerazione
     if (moveLeft) player.velX -= player.accel;
     else if (moveRight) player.velX += player.accel;
     else player.velX *= player.friction;
@@ -165,17 +152,21 @@ function update() {
     
     player.velY += GRAVITY;
     
-    // === MOVIMENTO ORIZZONTALE + COLLISIONI ===
+    // === MOVIMENTO ORIZZONTALE + COLLISIONI (FIX PRINCIPALE) ===
     player.x += player.velX;
     for (let p of platforms) {
         if (collides(player, p)) {
-            if (player.velX > 0) player.x = p.x - player.width;
-            if (player.velX < 0) player.x = p.x + p.width;
-            player.velX = 0;
+            // Calcoliamo quanto si sovrappone in verticale
+            const overlapY = Math.min(player.y + player.height, p.y + p.height) - Math.max(player.y, p.y);
+            // Se l'overlap verticale è piccolo (stai solo sopra la piattaforma) IGNORIAMO il muro laterale
+            if (overlapY > 8) {
+                if (player.velX > 0) player.x = p.x - player.width;
+                if (player.velX < 0) player.x = p.x + p.width;
+                player.velX = 0;
+            }
         }
     }
     
-    // Confini mondo
     if (player.x < 0) { player.x = 0; player.velX = 0; }
     if (player.x + player.width > WORLD_WIDTH) {
         player.x = WORLD_WIDTH - player.width;
@@ -198,13 +189,10 @@ function update() {
         }
     }
     
-    // Morte caduta
     if (player.y > 450) gameOver = true;
     
-    // Telecamera
     cameraX = Math.max(0, Math.min(player.x - canvas.width / 3, WORLD_WIDTH - canvas.width));
     
-    // Monete
     for (let c of coins) {
         if (!c.collected && collides(player, c)) {
             c.collected = true;
@@ -212,7 +200,6 @@ function update() {
         }
     }
     
-    // Nemici
     for (let e of enemies) {
         if (e.alive) {
             e.x += e.velX;
@@ -258,7 +245,6 @@ jumpBtn.addEventListener('touchstart', e => {
     }
 });
 
-// Restart toccando il canvas (solo quando hai vinto o game over)
 canvas.addEventListener('touchstart', e => {
     if (gameOver || won) {
         e.preventDefault();
@@ -269,7 +255,6 @@ canvas.addEventListener('click', () => {
     if (gameOver || won) resetGame();
 });
 
-// Tastiera
 window.addEventListener('keydown', e => {
     if (gameOver || won) return;
     if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') moveLeft = true;
