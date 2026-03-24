@@ -7,10 +7,14 @@ let cameraX = 0;
 
 let player = {
     x: 100, y: 200, width: 40, height: 40,
-    velX: 0, velY: 0, speed: 6, jumpPower: -18, grounded: false
+    velX: 0, velY: 0,
+    speed: 5.5,          // velocità massima
+    accel: 1.4,          // accelerazione
+    friction: 0.82,      // frizione quando non premi tasti
+    jumpPower: -18,
+    grounded: false
 };
 
-let keys = {};
 let moveLeft = false;
 let moveRight = false;
 
@@ -42,6 +46,24 @@ const goalX = 1900;
 
 function collides(a, b) {
     return !(a.x + a.width < b.x || a.x > b.x + b.width || a.y + a.height < b.y || a.y > b.y + b.height);
+}
+
+function resetGame() {
+    player.x = 100;
+    player.y = 200;
+    player.velX = 0;
+    player.velY = 0;
+    cameraX = 0;
+    score = 0;
+    gameOver = false;
+    won = false;
+    
+    coins.forEach(c => c.collected = false);
+    enemies[0].x = 500; enemies[0].alive = true;
+    enemies[1].x = 1200; enemies[1].alive = true;
+    
+    moveLeft = false;
+    moveRight = false;
 }
 
 function draw() {
@@ -112,34 +134,42 @@ function draw() {
     ctx.fillRect(px + 5, player.y + 38, 12, 6);
     ctx.fillRect(px + 25, player.y + 38, 12, 6);
     
-    // Testo
+    // Testo punteggio
     ctx.fillStyle = 'white';
     ctx.font = '20px Arial';
     ctx.fillText(`Punti: ${score}`, 20, 40);
     ctx.fillText('1-1', 350, 40);
     
-    if (gameOver) {
-        ctx.fillStyle = 'red';
+    // Game Over / Vittoria
+    if (gameOver || won) {
+        ctx.fillStyle = gameOver ? 'red' : '#FFD700';
         ctx.font = '40px Arial';
-        ctx.fillText('GAME OVER', 180, 200);
-    }
-    if (won) {
-        ctx.fillStyle = '#FFD700';
-        ctx.font = '40px Arial';
-        ctx.fillText('HAI VINTO!', 180, 200);
+        ctx.fillText(gameOver ? 'GAME OVER' : 'HAI VINTO!', 155, 180);
+        
+        ctx.fillStyle = 'white';
+        ctx.font = '24px Arial';
+        ctx.fillText('TOCCA LO SCHERMO PER RICOMINCIARE', 80, 240);
     }
 }
 
 function update() {
     if (gameOver || won) return;
     
-    player.velX = 0;
-    if (moveLeft || keys['ArrowLeft'] || keys['a'] || keys['A']) player.velX = -player.speed;
-    if (moveRight || keys['ArrowRight'] || keys['d'] || keys['D']) player.velX = player.speed;
+    // Movimento con accelerazione (fluido!)
+    if (moveLeft) {
+        player.velX -= player.accel;
+    } else if (moveRight) {
+        player.velX += player.accel;
+    } else {
+        player.velX *= player.friction;
+    }
+    
+    // Limita velocità massima
+    player.velX = Math.max(-player.speed, Math.min(player.speed, player.velX));
     
     player.velY += GRAVITY;
     
-    // Movimento X + collisione piattaforme
+    // Movimento orizzontale + collisione
     player.x += player.velX;
     for (let p of platforms) {
         if (collides(player, p)) {
@@ -149,17 +179,14 @@ function update() {
         }
     }
     
-    // === CONFINI DEL MONDO (fix sparizione) ===
-    if (player.x < 0) {
-        player.x = 0;
-        player.velX = 0;
-    }
+    // Confini mondo
+    if (player.x < 0) { player.x = 0; player.velX = 0; }
     if (player.x + player.width > WORLD_WIDTH) {
         player.x = WORLD_WIDTH - player.width;
         player.velX = 0;
     }
     
-    // Movimento Y + collisione
+    // Movimento verticale + collisione
     player.y += player.velY;
     player.grounded = false;
     for (let p of platforms) {
@@ -175,7 +202,7 @@ function update() {
         }
     }
     
-    // Morte se cadi dal basso
+    // Morte caduta
     if (player.y > 450) gameOver = true;
     
     // Telecamera
@@ -214,32 +241,52 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-// === CONTROLLI TOUCH (perfetti per iPhone) ===
+// ====================== CONTROLLI TOUCH (migliorati) ======================
 const leftBtn = document.getElementById('left-btn');
 const rightBtn = document.getElementById('right-btn');
 const jumpBtn = document.getElementById('jump-btn');
 
 leftBtn.addEventListener('touchstart', e => { e.preventDefault(); moveLeft = true; });
 leftBtn.addEventListener('touchend', () => moveLeft = false);
+leftBtn.addEventListener('touchcancel', () => moveLeft = false);
+
 rightBtn.addEventListener('touchstart', e => { e.preventDefault(); moveRight = true; });
 rightBtn.addEventListener('touchend', () => moveRight = false);
+rightBtn.addEventListener('touchcancel', () => moveRight = false);
 
 jumpBtn.addEventListener('touchstart', e => { 
     e.preventDefault(); 
-    if (player.grounded) {
+    if (player.grounded && !gameOver && !won) {
         player.velY = player.jumpPower;
         player.grounded = false;
     }
 });
 
-// Supporto tastiera (per prova su PC)
+// Restart toccando il canvas (dopo Game Over o Vittoria)
+canvas.addEventListener('touchstart', e => {
+    if (gameOver || won) {
+        e.preventDefault();
+        resetGame();
+    }
+});
+canvas.addEventListener('click', () => {
+    if (gameOver || won) resetGame();
+});
+
+// Tastiera (per prova su PC)
 window.addEventListener('keydown', e => {
-    keys[e.key] = true;
+    if (gameOver || won) return;
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') moveLeft = true;
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') moveRight = true;
     if ((e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') && player.grounded) {
         player.velY = player.jumpPower;
         player.grounded = false;
     }
 });
-window.addEventListener('keyup', e => keys[e.key] = false);
+window.addEventListener('keyup', e => {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') moveLeft = false;
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') moveRight = false;
+});
 
+resetGame(); // inizializza
 gameLoop();
