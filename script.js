@@ -8,9 +8,9 @@ let cameraX = 0;
 let player = {
     x: 100, y: 200, width: 40, height: 40,
     velX: 0, velY: 0,
-    speed: 5.5,          // velocità massima
-    accel: 1.4,          // accelerazione
-    friction: 0.82,      // frizione quando non premi tasti
+    speed: 5.5,
+    accel: 1.4,
+    friction: 0.82,
     jumpPower: -18,
     grounded: false
 };
@@ -45,7 +45,9 @@ let won = false;
 const goalX = 1900;
 
 function collides(a, b) {
-    return !(a.x + a.width < b.x || a.x > b.x + b.width || a.y + a.height < b.y || a.y > b.y + b.height);
+    // FIX IMPORTANTE: usa <= invece di < per IGNORARE il "tocco esatto" sulla cima delle piattaforme
+    // Questo elimina lo snap/teletrasporto all'inizio quando cammini sul terreno!
+    return !(a.x + a.width <= b.x || a.x >= b.x + b.width || a.y + a.height <= b.y || a.y >= b.y + b.height);
 }
 
 function resetGame() {
@@ -134,13 +136,12 @@ function draw() {
     ctx.fillRect(px + 5, player.y + 38, 12, 6);
     ctx.fillRect(px + 25, player.y + 38, 12, 6);
     
-    // Testo punteggio
+    // Testo
     ctx.fillStyle = 'white';
     ctx.font = '20px Arial';
     ctx.fillText(`Punti: ${score}`, 20, 40);
     ctx.fillText('1-1', 350, 40);
     
-    // Game Over / Vittoria
     if (gameOver || won) {
         ctx.fillStyle = gameOver ? 'red' : '#FFD700';
         ctx.font = '40px Arial';
@@ -155,21 +156,16 @@ function draw() {
 function update() {
     if (gameOver || won) return;
     
-    // Movimento con accelerazione (fluido!)
-    if (moveLeft) {
-        player.velX -= player.accel;
-    } else if (moveRight) {
-        player.velX += player.accel;
-    } else {
-        player.velX *= player.friction;
-    }
+    // Movimento fluido con accelerazione
+    if (moveLeft) player.velX -= player.accel;
+    else if (moveRight) player.velX += player.accel;
+    else player.velX *= player.friction;
     
-    // Limita velocità massima
     player.velX = Math.max(-player.speed, Math.min(player.speed, player.velX));
     
     player.velY += GRAVITY;
     
-    // Movimento orizzontale + collisione
+    // === MOVIMENTO ORIZZONTALE + COLLISIONI ===
     player.x += player.velX;
     for (let p of platforms) {
         if (collides(player, p)) {
@@ -186,7 +182,7 @@ function update() {
         player.velX = 0;
     }
     
-    // Movimento verticale + collisione
+    // === MOVIMENTO VERTICALE + COLLISIONI ===
     player.y += player.velY;
     player.grounded = false;
     for (let p of platforms) {
@@ -241,7 +237,7 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-// ====================== CONTROLLI TOUCH (migliorati) ======================
+// ====================== CONTROLLI ======================
 const leftBtn = document.getElementById('left-btn');
 const rightBtn = document.getElementById('right-btn');
 const jumpBtn = document.getElementById('jump-btn');
@@ -262,7 +258,7 @@ jumpBtn.addEventListener('touchstart', e => {
     }
 });
 
-// Restart toccando il canvas (dopo Game Over o Vittoria)
+// Restart toccando il canvas (solo quando hai vinto o game over)
 canvas.addEventListener('touchstart', e => {
     if (gameOver || won) {
         e.preventDefault();
@@ -273,7 +269,7 @@ canvas.addEventListener('click', () => {
     if (gameOver || won) resetGame();
 });
 
-// Tastiera (per prova su PC)
+// Tastiera
 window.addEventListener('keydown', e => {
     if (gameOver || won) return;
     if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') moveLeft = true;
@@ -288,5 +284,5 @@ window.addEventListener('keyup', e => {
     if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') moveRight = false;
 });
 
-resetGame(); // inizializza
+resetGame();
 gameLoop();
