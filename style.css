@@ -1,0 +1,51 @@
+body {
+    margin: 0;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+}
+
+#canvas {
+    background: #5C94FC;
+    border: 4px solid #000;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    max-width: 100%;
+    height: auto;
+}
+
+#controls {
+    display: flex;
+    width: 100%;
+    max-width: 800px;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    box-sizing: border-box;
+}
+
+.dpad {
+    display: flex;
+    gap: 15px;
+}
+
+button {
+    background: rgba(255,255,255,0.2);
+    color: white;
+    border: 3px solid white;
+    font-size: 32px;
+    padding: 15px 30px;
+    border-radius: 15px;
+    min-width: 70px;
+    touch-action: none;
+    user-select: none;
+}
+
+#jump-btn {
+    font-size: 26px;
+    padding: 15px 50px;
+}
